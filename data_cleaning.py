@@ -4,42 +4,79 @@ riksbank_df = pd.read_excel("mex_data.xlsx", sheet_name= "Riksbanken", index_col
 ecb_df = pd.read_excel("mex_data.xlsx", sheet_name= "ECB", index_col=0)
 market_rates_df = pd.read_excel("mex_data.xlsx", sheet_name= "Daily Adjusted", index_col=0)
 monthly_df = pd.read_excel("mex_data.xlsx", sheet_name= "Monthly")
-### Måste lägga in alla ny räntor också
-
+quarter_df = pd.read_excel("mex_data.xlsx", sheet_name= "Quarterly")
+#######
+stibor_6m_df = pd.read_excel("mex_data.xlsx", sheet_name="stibor_6m", index_col=0)
+ustreasury_6m_df = pd.read_excel("mex_data.xlsx", sheet_name="ustreasury_6m", index_col=0)
+usd1y_irswap_df = pd.read_excel("mex_data.xlsx", sheet_name="usd1y_irswap", index_col=0)
+usd5y_irswap_df = pd.read_excel("mex_data.xlsx", sheet_name="usd5y_irswap", index_col=0)
+usd10y_irswap_df = pd.read_excel("mex_data.xlsx", sheet_name="usd10y_irswap", index_col=0)
+sonia_6m_df = pd.read_excel("mex_data.xlsx", sheet_name="sonia_6m", index_col=0)
+sek1y_irswap_df = pd.read_excel("mex_data.xlsx", sheet_name="sek1y_irswap", index_col=0)
+sek5y_irswap_df = pd.read_excel("mex_data.xlsx", sheet_name="sek5y_irswap", index_col=0)
+sek10y_irswap_df = pd.read_excel("mex_data.xlsx", sheet_name="sek10y_irswap", index_col=0)
+nibor_3m_df = pd.read_excel("mex_data.xlsx", sheet_name="nibor_3m", index_col=0)
+nibor_6m_df = pd.read_excel("mex_data.xlsx", sheet_name="nibor_6m", index_col=0)
+euro1y_irswap_df = pd.read_excel("mex_data.xlsx", sheet_name="euro1y_irswap", index_col=0)
+euro5y_irswap_df = pd.read_excel("mex_data.xlsx", sheet_name="euro5y_irswap", index_col=0)
+euro10y_irswap_df = pd.read_excel("mex_data.xlsx", sheet_name="euro10y_irswap", index_col=0)
+euribor_6m_df = pd.read_excel("mex_data.xlsx", sheet_name="euribor_6m", index_col=0)
 
 monthly_df["Date"] = pd.to_datetime(monthly_df["Date"], format="%YM%m")
 monthly_df.set_index("Date", inplace=True)
 
+quarter_df["Date"] = pd.PeriodIndex(quarter_df["Date"], freq="Q").to_timestamp(how="end").normalize()
+quarter_df.set_index("Date", inplace=True)
+
 #måste ändra här, vissa ska va summor, inte snitt pga konstigt annars
-swe_macro = monthly_df[["swe_nat_debt", "import_msek", "export_msek", "net_trade"]].resample("QE").sum()
-
-cpi_quarterly_avg = monthly_df["kpi_fixed_values"].resample("QE").mean()
+swe_macro_quarterly_sum = monthly_df[["import_msek", "export_msek", "net_trade"]].resample("QE").sum()
+swe_macro_quarterly_avg = monthly_df[["swe_nat_debt","kpi_fixed_values"]].resample("QE").mean()
 quarterly_inflation = (
-    cpi_quarterly_avg / cpi_quarterly_avg.shift(4) - 1
+    swe_macro_quarterly_avg["kpi_fixed_values"] / swe_macro_quarterly_avg["kpi_fixed_values"].shift(4) - 1
 )
-base_cpi = cpi_quarterly_avg.iloc[0]
 
-cpi_index = cpi_quarterly_avg / base_cpi
+swe_macro_quarterly_avg["quarterly_inflation"] = quarterly_inflation
+base_cpi = swe_macro_quarterly_avg["kpi_fixed_values"].iloc[0]
 
-swe_macro = swe_macro.div(cpi_index, axis=0)
+cpi_index = swe_macro_quarterly_avg["kpi_fixed_values"] / base_cpi
 
-macro_df = pd.concat([swe_macro, quarterly_inflation,], axis=1)
+swe_macro_quarterly_sum = pd.concat([swe_macro_quarterly_sum, quarter_df[["swedb_nii", "swe_gdp", "swedb_customer_loans_bnsek", "swedb_customer_deposits_bnsek"]]], axis=1)
+swe_macro_quarterly_sum = swe_macro_quarterly_sum.div(cpi_index, axis=0)
 
-## Add more data frames 
+macro_df = pd.concat([quarter_df[["unempl_rate", "swedb_loan_deposit_ratio"]],swe_macro_quarterly_sum, swe_macro_quarterly_avg], axis=1)
+
+
+## Add more data frames
 rate_dfs = {
     "riksbank": riksbank_df,
     "ecb": ecb_df,
-    "market_rates": market_rates_df
+    "market_rates": market_rates_df,
+    "stibor_6m": stibor_6m_df,
+    "ustreasury_6m": ustreasury_6m_df,
+    "usd1y_irswap_bid": usd1y_irswap_df[["usd1y_irswap_bid"]],
+    "usd1y_irswap_ask": usd1y_irswap_df[["usd1y_irswap_ask"]],
+    "usd5y_irswap_bid": usd5y_irswap_df[["usd5y_irswap_bid"]],
+    "usd5y_irswap_ask": usd5y_irswap_df[["usd5y_irswap_ask"]],
+    "usd10y_irswap_bid": usd10y_irswap_df[["usd10y_irswap_bid"]],
+    "usd10y_irswap_ask": usd10y_irswap_df[["usd10y_irswap_ask"]],
+    "sek1y_irswap_bid": sek1y_irswap_df[["sek1y_irswap_bid"]],
+    "sek1y_irswap_ask": sek1y_irswap_df[["sek1y_irswap_ask"]],
+    "sek5y_irswap_bid": sek5y_irswap_df[["sek5y_irswap_bid"]],
+    "sek5y_irswap_ask": sek5y_irswap_df[["sek5y_irswap_ask"]],
+    "sek10y_irswap_bid": sek10y_irswap_df[["sek10y_irswap_bid"]],
+    "sek10y_irswap_ask": sek10y_irswap_df[["sek10y_irswap_ask"]],
+    "euro1y_irswap_bid": euro1y_irswap_df[["euro1y_irswap_bid"]],
+    "euro1y_irswap_ask": euro1y_irswap_df[["euro1y_irswap_ask"]],
+    "euro5y_irswap_bid": euro5y_irswap_df[["euro5y_irswap_bid"]],
+    "euro5y_irswap_ask": euro5y_irswap_df[["euro5y_irswap_ask"]],
+    "euro10y_irswap_bid": euro10y_irswap_df[["euro10y_irswap_bid"]],
+    "euro10y_irswap_ask": euro10y_irswap_df[["euro10y_irswap_ask"]],
+    "euribor_6m": euribor_6m_df,
+    "nibor_3m": nibor_3m_df,
+    "nibor_6m": nibor_6m_df,
+    "sonia_6m": sonia_6m_df
 }
 
-"""
-riksbank_df["polrate_return"] = riksbank_df["Policy rate"].pct_change()
-riksbank_volatility = riksbank_df["polrate_return"].resample("QE").std().rename("polrate_vol")
-riksbank_q_df = riksbank_df.resample("QE").mean()
-ecb_df["deprate_return"] = ecb_df["ECB Deposit rate"].pct_change()
-ecb_volatility = ecb_df["deprate_return"].resample("QE").std().rename("ecbrate_vol")
-ecb_q_df = ecb_df.resample("QE").mean()
-"""
 
 def process_rates(rates, moving_avg_window):
     quarterly_results = []  # Store results for merging
@@ -73,9 +110,8 @@ def process_rates(rates, moving_avg_window):
 
     return final_quarterly_df
 
-#quarterly_df = process_rates(rate_dfs, 50)
+quarterly_df = process_rates(rate_dfs, 50)
+quarterly_df = pd.concat([quarterly_df, macro_df], axis=1)
 
 
-#print(quarterly_df)
-
-#quarterly_df.to_excel("quarterly_rates_aggregates.xlsx")
+quarterly_df.to_excel("quarterly_rates_aggregates_v2.xlsx")
