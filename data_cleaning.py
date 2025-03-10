@@ -1,4 +1,8 @@
 import pandas as pd
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
+import matplotlib.pyplot as plt
+import seaborn as sns
+
 
 riksbank_df = pd.read_excel("mex_data.xlsx", sheet_name= "Riksbanken", index_col=0)
 ecb_df = pd.read_excel("mex_data.xlsx", sheet_name= "ECB", index_col=0)
@@ -21,6 +25,8 @@ euro1y_irswap_df = pd.read_excel("mex_data.xlsx", sheet_name="euro1y_irswap", in
 euro5y_irswap_df = pd.read_excel("mex_data.xlsx", sheet_name="euro5y_irswap", index_col=0)
 euro10y_irswap_df = pd.read_excel("mex_data.xlsx", sheet_name="euro10y_irswap", index_col=0)
 euribor_6m_df = pd.read_excel("mex_data.xlsx", sheet_name="euribor_6m", index_col=0)
+
+
 
 monthly_df["Date"] = pd.to_datetime(monthly_df["Date"], format="%YM%m")
 monthly_df.set_index("Date", inplace=True)
@@ -53,27 +59,16 @@ rate_dfs = {
     "market_rates": market_rates_df,
     "stibor_6m": stibor_6m_df,
     "ustreasury_6m": ustreasury_6m_df,
-    "usd1y_irswap_bid": usd1y_irswap_df[["usd1y_irswap_bid"]],
     "usd1y_irswap_ask": usd1y_irswap_df[["usd1y_irswap_ask"]],
-    "usd5y_irswap_bid": usd5y_irswap_df[["usd5y_irswap_bid"]],
     "usd5y_irswap_ask": usd5y_irswap_df[["usd5y_irswap_ask"]],
-    "usd10y_irswap_bid": usd10y_irswap_df[["usd10y_irswap_bid"]],
     "usd10y_irswap_ask": usd10y_irswap_df[["usd10y_irswap_ask"]],
-    "sek1y_irswap_bid": sek1y_irswap_df[["sek1y_irswap_bid"]],
     "sek1y_irswap_ask": sek1y_irswap_df[["sek1y_irswap_ask"]],
-    "sek5y_irswap_bid": sek5y_irswap_df[["sek5y_irswap_bid"]],
     "sek5y_irswap_ask": sek5y_irswap_df[["sek5y_irswap_ask"]],
-    "sek10y_irswap_bid": sek10y_irswap_df[["sek10y_irswap_bid"]],
     "sek10y_irswap_ask": sek10y_irswap_df[["sek10y_irswap_ask"]],
-    "euro1y_irswap_bid": euro1y_irswap_df[["euro1y_irswap_bid"]],
     "euro1y_irswap_ask": euro1y_irswap_df[["euro1y_irswap_ask"]],
-    "euro5y_irswap_bid": euro5y_irswap_df[["euro5y_irswap_bid"]],
     "euro5y_irswap_ask": euro5y_irswap_df[["euro5y_irswap_ask"]],
-    "euro10y_irswap_bid": euro10y_irswap_df[["euro10y_irswap_bid"]],
     "euro10y_irswap_ask": euro10y_irswap_df[["euro10y_irswap_ask"]],
     "euribor_6m": euribor_6m_df,
-    "nibor_3m": nibor_3m_df,
-    "nibor_6m": nibor_6m_df,
     "sonia_6m": sonia_6m_df
 }
 
@@ -91,7 +86,7 @@ def process_rates(rates, moving_avg_window):
             df_single = df[[col]].dropna()  # Work with one rate at a time
 
             # Compute quarterly average
-            df_q = df_single.resample("QE").mean().rename(columns={col: f"{col}_Avg"})
+            df_q = df_single.resample("QE").mean().rename(columns={col: f"{col}"})
 
             # Compute daily returns for volatility
             df_single["Daily Return"] = df_single.pct_change()
@@ -112,6 +107,35 @@ def process_rates(rates, moving_avg_window):
 
 quarterly_df = process_rates(rate_dfs, 50)
 quarterly_df = pd.concat([quarterly_df, macro_df], axis=1)
+quarterly_df.fillna(value=0, inplace=True)
+#quarterly_df.to_excel("quarterly_rates_aggregates_v2.xlsx")
 
+predictors = quarterly_df.drop(columns=["swedb_nii"])
 
-quarterly_df.to_excel("quarterly_rates_aggregates_v2.xlsx")
+scaler = MinMaxScaler()  # Alternatives: MinMaxScaler(), RobustScaler(), StandardScaler
+
+# Normalize predictors
+normalized_predictors = pd.DataFrame(scaler.fit_transform(predictors), columns=predictors.columns, index=predictors.index)
+
+# Add back the dependent variable (NII)
+normalized_df = pd.concat([normalized_predictors, quarterly_df["swedb_nii"]], axis=1)
+
+#normalized_df.to_excel("normalized_quarterly_aggregates.xlsx")
+
+# Identify columns related to volatility and moving averages
+volatility_cols = [col for col in normalized_df.columns if "_Volatility" in col]
+moving_avg_cols = [col for col in normalized_df.columns if "_MA" in col]
+
+# Create a new DataFrame with only volatility and moving average columns
+volatility_moving_avg_df = quarterly_df[volatility_cols + moving_avg_cols]
+
+# Create a DataFrame with only core values (excluding volatility and moving averages)
+core_values_df = quarterly_df.drop(columns=volatility_cols + moving_avg_cols)
+
+correlation_matrix = core_values_df.corr()
+
+# Plot heatmap
+plt.figure(figsize=(12, 8))
+sns.heatmap(correlation_matrix, annot=False, cmap="coolwarm", linewidths=0.5)
+plt.title("Correlation Heatmap of Core Variables")
+plt.show()
