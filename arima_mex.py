@@ -63,7 +63,7 @@ def rolling_backtest_arima(data, order, window=4, plot=False):
     """
     actual_values, forecasted_values, dates, residuals = [], [], [], []
 
-    for start in range(0, len(data) - window, window):
+    for start in range(0, len(data) - window - 1):
         train = data[: start + window]
         test = data[start + window: start + window + 1]
 
