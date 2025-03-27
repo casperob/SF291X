@@ -65,7 +65,7 @@ def rolling_backtest_arima(data, order, window=4, plot=False):
 
     for start in range(0, len(data) - window, window):
         train = data[: start + window]
-        test = data[start + window: start + 2 * window]
+        test = data[start + window: start + window + 1]
 
         if len(test) == 0:
             break
