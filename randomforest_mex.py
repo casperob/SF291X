@@ -73,8 +73,8 @@ def optimize_random_forest(y, X, param_grid, window=4):
             actual, predicted, dates, residuals = [], [], [], []
 
             for start in range(0, len(y) - window, window):
-                train_y, train_X = y[:start + window], X[:start + window]
-                test_y, test_X = y[start + window:start + 2 * window], X[start + window:start + 2 * window]
+                train = data[: start + window]
+                test = data[start + window: start + window + 1]
 
                 if len(test_y) == 0:
                     break
