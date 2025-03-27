@@ -51,9 +51,9 @@ def rolling_backtest_var(data, lags, window=4):
     """Performs rolling backtesting on the VAR model."""
     actual_values, forecasted_values, dates = [], [], []
 
-    for start in range(0, len(data) - window, window):
-        train = data[: start + window]
-        test = data[start + window: start + 2 * window]
+    for start in range(0, len(data) - window - 1):
+        train = data.iloc[:start + window]
+        test = data.iloc[start + window : start + window + 1]
 
         if len(test) == 0:
             break
