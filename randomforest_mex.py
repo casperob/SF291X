@@ -72,7 +72,7 @@ def optimize_random_forest(y, X, param_grid, window=4):
             model = RandomForestRegressor(random_state=42, **params)
             actual, predicted, dates, residuals = [], [], [], []
 
-            for start in range(0, len(y) - window, window):
+            for start in range(0, len(y) - window - 1):
                 train = data[: start + window]
                 test = data[start + window: start + window + 1]
 
