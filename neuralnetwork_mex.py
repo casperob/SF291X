@@ -54,7 +54,7 @@ X_supervised.columns = X_supervised.columns.astype(str)  # Fix for sklearn compa
 def rolling_backtest_mlp(y, X, window=4, plot=False):
     actual, predicted, dates, residuals = [], [], [], []
 
-    for start in range(0, len(y) - window, window):
+    for start in range(0, len(y) - window - 1):
         train = data[: start + window]
         test = data[start + window: start + window + 1]
 
