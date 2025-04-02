@@ -21,24 +21,60 @@ X = df.drop(columns=["swedb_nii"])
 full_set_vars = list(X.columns)
 
 # Portfolios for qualitative strategies
-portfolios = {
+portfolio_dict = {
     "PCA": full_set_vars,
-    "Portfolio_A": [
-        "Policy rate", "STIBOR3M", "EURIBOR3M",
-        "swedb_customer_loans_bnsek", "swedb_customer_deposits_bnsek",
-        "swedb_loan_deposit_ratio", "swe_gdp", "quarterly_inflation"
+    "Portfolio 1 - Balanced Macro Focus": [
+        "ECB Deposit rate", "EURIBOR3M",
+        "swedb_customer_deposits_bnsek", "swedb_loan_deposit_ratio", "swedb_customer_loans_bnsek",
+        "swe_gdp", "quarterly_inflation", "net_trade"
     ],
-    "Portfolio_B": [
-        "ECB Deposit rate", "EURIBOR3M", "USTREASURY3M",
-        "sek5y_irswap_ask", "swedb_customer_loans_bnsek",
-        "swedb_customer_deposits_bnsek", "swe_nat_debt", "unempl_rate"
+    "Portfolio 2 – Core Inflation Watch": [
+        "Policy rate", "EURIBOR3M",
+        "swedb_customer_deposits_bnsek", "swedb_customer_loans_bnsek", "swedb_loan_deposit_ratio",
+        "re_priceindex", "swe_nat_debt", "quarterly_inflation"
     ],
-    "Portfolio_C": [
-        "Policy rate", "STIBOR_6M_3M_Spread", "EURIBOR_6M_3M_Spread",
+    "Portfolio 3 – Economy": [
+        "Policy rate", "EURIBOR3M",
+        "swedb_loan_deposit_ratio", "swedb_customer_deposits_bnsek",
+        "swe_gdp", "disp_income_msek", "gdp_growth_pct", "quarterly_inflation"
+    ],
+    "Portfolio 4 – Trade-Sensitive Model": [
+        "Policy rate", "EURIBOR3M",
         "swedb_customer_loans_bnsek", "swedb_customer_deposits_bnsek",
-        "swedb_loan_deposit_ratio", "re_priceindex", "kpi_fixed_values"
+        "unempl_rate", "re_priceindex", "export_msek", "import_msek"
+    ],
+    "Portfolio 5 – Inflation Stress Lens": [
+        "ECB Deposit rate", "EURIBOR3M",
+        "swedb_customer_loans_bnsek", "swedb_loan_deposit_ratio", "swedb_customer_deposits_bnsek",
+        "swe_gdp", "quarterly_inflation", "unempl_rate"
+    ],
+    "Portfolio 6 – Long-Duration Exposure Placeholder": [
+        "ECB Deposit rate", "sek10y_irswap_ask",
+        "swedb_customer_loans_bnsek", "swedb_loan_deposit_ratio",
+        "gdp_growth_pct", "import_msek", "disp_income_msek", "kpi_fixed_values"
+    ],
+    "Portfolio 7 – Domestic Activity Monitor": [
+        "Policy rate", "sek5y_irswap_ask",
+        "swedb_customer_deposits_bnsek", "swedb_loan_deposit_ratio",
+        "kpi_fixed_values", "export_msek", "import_msek", "unempl_rate"
+    ],
+    "Portfolio 8 – Fiscal and Trade Watch": [
+        "Policy rate", "sek10y_irswap_ask",
+        "swedb_customer_loans_bnsek", "swedb_loan_deposit_ratio", "swedb_customer_deposits_bnsek",
+        "swe_nat_debt", "re_priceindex", "net_trade"
+    ],
+    "Portfolio 9 – ": [
+        "ECB Deposit rate", "sek1y_irswap_ask",
+        "swedb_customer_loans_bnsek", "swedb_loan_deposit_ratio", "swedb_customer_deposits_bnsek",
+        "disp_income_msek", "unempl_rate", "gdp_growth_pct"
+    ],
+    "Portfolio 10 – GDP Sensitivity Model": [
+        "Policy rate", "sek5y_irswap_ask",
+        "swedb_loan_deposit_ratio", "swedb_customer_loans_bnsek",
+        "kpi_fixed_values", "swe_nat_debt", "swe_gdp", "net_trade"
     ]
 }
+
 
 # Model references
 models = {
@@ -54,7 +90,7 @@ window_sizes = [4, 6, 8]
 # Run experiments
 results = []
 
-for strategy_name, variable_list in portfolios.items():
+for strategy_name, variable_list in portfolio_dict.items():
     print(f"\n>> Processing strategy: {strategy_name}")
     X_subset = X[variable_list]
 
