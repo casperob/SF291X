@@ -5,6 +5,8 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.decomposition import PCA
 import warnings
 from sklearn.exceptions import ConvergenceWarning
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 
 # Import model wrappers
 from models.nn_model import run_nn
@@ -62,8 +64,9 @@ banks = {
     "Nordea": "nordea_nii"
 }
 
-# === Run Evaluation ===
+# === Run Evaluation & Collect Results for Combined Plots ===
 all_results = []
+plot_data = {}  # structure: plot_data[bank][model][strategy] = (time_index, actual_dNII, forecast_dNII)
 
 for bank_name, target_col in banks.items():
     for scenario in top5:
@@ -74,19 +77,28 @@ for bank_name, target_col in banks.items():
 
         y = df[target_col].diff().dropna()
         X = df[predictors].diff().dropna()
-
         X, y = X.loc[y.index], y.loc[X.index]  # Align
 
         scaler = StandardScaler()
         X_scaled = pd.DataFrame(scaler.fit_transform(X), index=X.index, columns=X.columns)
 
-        # Run model
         if model_name == "Neural Network":
             result = run_nn(y, X_scaled, window)
         elif model_name == "Random Forest":
             result = run_rf(y, X_scaled, window)
         else:
             raise ValueError(f"Unsupported model type: {model_name}")
+
+        time_index = y.index[window + 1:]
+        actual_diff = result['y_true']
+        forecast_diff = result['y_pred']
+
+        # Store for grouped plotting
+        if bank_name not in plot_data:
+            plot_data[bank_name] = {}
+        if model_name not in plot_data[bank_name]:
+            plot_data[bank_name][model_name] = {}
+        plot_data[bank_name][model_name][strategy] = (time_index, actual_diff, forecast_diff)
 
         all_results.append({
             "Bank": bank_name,
@@ -97,7 +109,27 @@ for bank_name, target_col in banks.items():
             "RMSE": result["RMSE"]
         })
 
+# === Plot per (Bank × Model), with all top strategies ===
+for bank_name, models in plot_data.items():
+    for model_name, strategies in models.items():
+        plt.figure(figsize=(12, 5))
+
+        for strategy, (time_index, actual, forecast) in strategies.items():
+            plt.plot(time_index, actual, label=f'{strategy} — Actual')
+            plt.plot(time_index, forecast, '--', label=f'{strategy} — Forecast')
+
+        plt.title(f'{bank_name} — {model_name}')
+        plt.xlabel("Year")
+        plt.ylabel("Δ Net Interest Income (ΔNII)")
+        plt.legend(fontsize='small', loc='upper left')
+        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
+        plt.gca().xaxis.set_major_locator(mdates.YearLocator())
+        plt.tight_layout()
+        plt.show()
+
+
 # === Save or Display ===
 results_df = pd.DataFrame(all_results)
 results_df.to_excel("peer_bank_top5_comparison.xlsx", index=False)
 print("Comparison saved to peer_bank_top5_comparison.xlsx")
+
