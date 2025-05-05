@@ -19,6 +19,13 @@ df = pd.read_excel("quarterly_averages.xlsx")
 df['Date'] = pd.to_datetime(df['Date'])
 df.set_index('Date', inplace=True)
 
+# === Convert Nordea NII from EUR to SEK ===
+if "nordea_nii" in df.columns and "eur_sek" in df.columns:
+    df["nordea_nii"] = df["nordea_nii"] * df["eur_sek"]
+    print("Converted Nordea NII from EUR to SEK using quarterly average exchange rates.")
+else:
+    raise ValueError("Missing 'nordea_nii' or 'eur_sek' column in the Excel file.")
+
 # === Define Portfolio Variables ===
 portfolio_dict = {
    "Portfolio 1 - Balanced Macro Focus": [
