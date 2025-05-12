@@ -8,7 +8,6 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from statsmodels.stats.diagnostic import acorr_ljungbox
 import warnings
-from tensorflow.python.ops.initializers_ns import variables
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 import scipy.stats as stats
 import statsmodels.api as sm
@@ -16,22 +15,26 @@ import statsmodels.api as sm
 warnings.filterwarnings("ignore")
 
 # Load Data
-df = pd.read_excel("normalized_quarterly_averages.xlsx")
+df = pd.read_excel("quarterly_averages_org.xlsx")
 df['Date'] = pd.to_datetime(df['Date'])
 df.set_index('Date', inplace=True)
 
-# Select Variables
-variables = ['swedb_nii', 'EURIBOR3M', 'swe_gdp', 'swedb_loan_deposit_ratio']
-data = df[variables]
-#data = df.drop(columns="swedb_nii")
+#FAVAR Step 1: Separate target and predictors
+nii_series = df["swedb_nii"]
+predictors = df.drop(columns="swedb_nii")
+
+#FAVAR Step 2: PCA on predictors
+
+pca = PCA(n_components=0.95)
+factors = pca.fit_transform(predictors)
+
+# FAVAR Step 3: Combine factors and target
+factor_columns = [f'F{i+1}' for i in range(pca.n_components_)]
+factors_df = pd.DataFrame(factors, index=predictors.index, columns=factor_columns)
+data = pd.concat([nii_series, factors_df], axis=1)
 
 # Ensure Stationarity (First Differences)
 data_diff = data.diff().dropna()
-
-#pca = PCA(n_components=0.95)
-
-#pca_data = pca.fit_transform(data_diff)
-#print(f"Number of PCA components retained: {pca.n_components_}")
 
 
 def select_var_lag(data_df, maxlags):
@@ -53,7 +56,7 @@ def rolling_backtest_var(data, lags, window=4):
 
     for start in range(0, len(data) - window - 1):
         train = data.iloc[:start + window]
-        test = data.iloc[start + window : start + window + 1]
+        test = data.iloc[start + window: start + window + 1]
 
         if len(test) == 0:
             break
@@ -147,11 +150,13 @@ def evaluate_on_test_set_var(data, lags, split_ratio=0.8):
 evaluate_on_test_set_var(data, lags=lag_order, split_ratio=0.8)
 
 # Extract NII Equation Coefficients
+
 model = VAR(data)
 model_fitted = model.fit(lag_order)
-nii_equation = model_fitted.params.loc[:, 'swedb_nii']
-print("\nCoefficients in the NII equation:")
-print(nii_equation)
+#nii_equation = model_fitted.params.loc[:, 'swedb_nii']
+#print("\nCoefficients in the NII equation:")
+#print(nii_equation)
+
 
 # Residual Diagnostics
 residuals = model_fitted.resid['swedb_nii']
