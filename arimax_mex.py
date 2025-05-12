@@ -13,7 +13,6 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 
 
-
 warnings.filterwarnings("ignore")  # Suppress warnings for cleaner output
 
 # Load Data
@@ -23,13 +22,6 @@ df.set_index('Date', inplace=True)
 
 # Target Variable
 y = df['swedb_nii']
-
-# Select Exogenous Variables (Example: Based on Correlation or Feature Importance)
-
-#X = df[['STIBOR3M', 'unempl_rate', 'swedb_loan_deposit_ratio', 'import_msek',
-#       'net_trade', 'swe_gdp', 'swedb_customer_loans_bnsek', 'swe_nat_debt',
-#       'quarterly_inflation']]
-
 X = df.drop(columns=["swedb_nii"])
 
 # Ensure Data is Stationary (Differencing if Necessary)
@@ -74,9 +66,11 @@ def rolling_backtest_arimax(y, X, order, window=4, plot=False):
 
     actual_values, forecasted_values, dates, residuals = [], [], [], []
 
-    for start in range(0, len(y) - window, window):
-        train = data[: start + window]
-        test = data[start + window: start + window + 1]
+    for start in range(0, len(y) - window - 1):
+        train_y = y[start: start + window]
+        train_X = X[start: start + window]
+        test_y = y[start + window: start + window + 1]
+        test_X = X[start + window: start + window + 1]
 
         if len(test_y) == 0:
             break
@@ -190,8 +184,9 @@ def evaluate_on_test_set_arimax(y, X, order, split_ratio=0.8):
 
 
 # **1. Optimize ARIMAX order (No Plots During Grid Search)**
-p_values, d_values, q_values = range(0, 4), range(0, 2), range(0, 4)
-best_order, _ = optimize_arimax(y_diff, X_pca, p_values, d_values, q_values, window=4)
+#p_values, d_values, q_values = range(0, 4), range(0, 2), range(0, 4)
+#best_order, _ = optimize_arimax(y_diff, X_pca, p_values, d_values, q_values, window=4)
+best_order = (2,0,2)
 
 print(f"\n Best ARIMAX Order: {best_order}")
 
@@ -206,4 +201,13 @@ forecast_future_values_arimax(y_diff, X_pca, order=best_order, steps=8)
 
 # **5. Evaluate on Test Set**
 evaluate_on_test_set_arimax(y_diff, X_pca, order=best_order, split_ratio=0.8)
+
+# Calculate error metrics from rolling forecast residuals
+residuals = backtest_results["Residuals"]
+mae_rolling = np.mean(np.abs(residuals))
+rmse_rolling = np.sqrt(np.mean(residuals**2))
+
+print(f"\nRolling Forecast Error Metrics:")
+print(f" - MAE: {mae_rolling:.5f}")
+print(f" - RMSE: {rmse_rolling:.5f}")
 
