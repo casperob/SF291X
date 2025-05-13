@@ -8,12 +8,13 @@ from sklearn.decomposition import PCA
 from statsmodels.tsa.stattools import adfuller
 from statsmodels.stats.diagnostic import acorr_ljungbox
 import scipy.stats as stats
+from sklearn.model_selection import GridSearchCV
 import warnings
 
 warnings.filterwarnings("ignore")
 
 # 1. Load and preprocess data
-df = pd.read_excel("quarterly_averages.xlsx")
+df = pd.read_excel("quarterly_averages_org.xlsx")
 df['Date'] = pd.to_datetime(df['Date'])
 df.set_index('Date', inplace=True)
 
@@ -54,22 +55,36 @@ X_supervised.columns = X_supervised.columns.astype(str)  # Fix for sklearn compa
 def rolling_backtest_mlp(y, X, window=4, plot=False):
     actual, predicted, dates, residuals = [], [], [], []
 
-    for start in range(0, len(y) - window - 1):
-        train = data[: start + window]
-        test = data[start + window: start + window + 1]
+    param_grid = {
+        'hidden_layer_sizes': [(32,), (64,), (64, 32), (128, 64)],
+        'activation': ['relu', 'tanh'],
+        'solver': ['adam'],
+        'alpha': [0.0001, 0.001],
+        'learning_rate': ['constant', 'adaptive'],
+    }
 
+    for start in range(0, len(y) - window - 1):
+        train_y = y[start: start + window]
+        train_X = X[start: start + window]
+        test_y = y[start + window: start + window + 1]
+        test_X = X[start + window: start + window + 1]
         if len(test_y) == 0:
             break
 
-        model = MLPRegressor(hidden_layer_sizes=(64, 32), activation='relu',
-                             solver='adam', max_iter=500, random_state=42)
-        model.fit(train_X, train_y)
-        forecast = model.predict(test_X)
+        base_model = MLPRegressor(max_iter=500, random_state=42)
+        grid_search = GridSearchCV(base_model, param_grid, cv=3, scoring='neg_mean_absolute_error', n_jobs=-1)
+        grid_search.fit(train_X, train_y)
+
+        best_model = grid_search.best_estimator_
+
+        forecast = best_model.predict(test_X)
 
         actual.extend(test_y.values)
         predicted.extend(forecast)
         dates.extend(test_y.index)
         residuals.extend(test_y.values - forecast)
+
+        print(f"Best params for window ending {test_y.index[-1].date()}: {grid_search.best_params_}")
 
     backtest_df = pd.DataFrame({
         "Date": dates,
